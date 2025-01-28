@@ -5,6 +5,7 @@ namespace Feature\Aggregators;
 use App\Aggregators\LoanAggregateRoot;
 use App\Events\LoanApproved;
 use App\Events\LoanChangeAmountRequestRejected;
+use App\Events\LoanPaid;
 use App\Events\LoanRequested;
 use App\Events\LoanRequestedAmountChanged;
 use App\Events\MoneyCollected;
@@ -91,5 +92,28 @@ class LoanAggregatorTest extends TestCase
                 $aggregateRoot->collectMoney($loanTransactionId, 100, now()->addHours(5));
             })
             ->assertEventRecorded(new MoneyCollected($uuid, $loanTransactionId, 100, now()->addHours(5)));
+    }
+
+    #[Test]
+    public function itShouldTransformLoanToPaidAfterLastTransactionCollected()
+    {
+        $user_id = User::factory()->createOne()->id;
+
+        $this->freezeTime();
+
+        $firstTransactionId = Str::uuid7();
+        $lastTransactionId = Str::uuid7();
+
+        LoanAggregateRoot::fake($uuid = Str::uuid7())
+            ->when(function (LoanAggregateRoot $aggregateRoot) use ($user_id, $firstTransactionId) {
+                $aggregateRoot->requestLoan($user_id, 200, 100, now()->subDays(3))
+                    ->collectMoney($firstTransactionId, 100, now()->subDays(2));
+            })
+            ->assertNotRecorded(LoanPaid::class)
+            // after last transaction collected, then LoanPaid event should be recorded
+            ->when(function (LoanAggregateRoot $aggregateRoot) use ($lastTransactionId) {
+                $aggregateRoot->collectMoney($lastTransactionId, 100, now()->addDays(1));
+            })
+            ->assertEventRecorded(new LoanPaid($lastTransactionId, 100, now()->addDays(1)));
     }
 }

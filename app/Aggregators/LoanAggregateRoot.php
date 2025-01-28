@@ -4,6 +4,7 @@ namespace App\Aggregators;
 
 use App\Events\LoanApproved;
 use App\Events\LoanChangeAmountRequestRejected;
+use App\Events\LoanPaid;
 use App\Events\LoanRequested;
 use App\Events\LoanRequestedAmountChanged;
 use App\Events\MoneyCollected;
@@ -70,6 +71,10 @@ class LoanAggregateRoot extends AggregateRoot
 
         $this->collectedTransactions->collectMoney($transactionId, $amount, $collectedAt);
 
+        if ($this->remainingAmount <= 0) {
+            $this->recordThat(new LoanPaid($transactionId, $amount, $collectedAt));
+        }
+
         return $this;
     }
 
@@ -103,6 +108,13 @@ class LoanAggregateRoot extends AggregateRoot
     public function applyMoneyCollected(MoneyCollected $event)
     {
         $this->remainingAmount -= $event->amount;
+
+        $this->status = LoanStatus::Partial_Paid;
+    }
+
+    public function applyLoanPaid(LoanPaid $event)
+    {
+        $this->status = LoanStatus::Paid;
     }
 
     private function loanProcessStarted(): bool

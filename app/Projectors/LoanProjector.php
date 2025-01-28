@@ -3,6 +3,7 @@
 namespace App\Projectors;
 
 use App\Events\LoanApproved;
+use App\Events\LoanPaid;
 use App\Events\LoanRequested;
 use App\Events\LoanRequestedAmountChanged;
 use App\Events\MoneyCollected;
@@ -50,5 +51,12 @@ class LoanProjector extends Projector
             ->decrement('remaining_amount', $event->amount, [
                 'status' => LoanStatus::Partial_Paid,
             ]);
+    }
+
+    public function onLoanPaid(LoanPaid $event): void
+    {
+        Loan::find($event->loanId)
+            ->writeable()
+            ->update(['status' => LoanStatus::Paid]);
     }
 }
