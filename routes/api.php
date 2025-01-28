@@ -12,3 +12,4 @@ Route::apiResource('/loans', LoansController::class)
     ->middleware('auth:sanctum');
 
 Route::post('/loans/approve/{loan}', [LoansController::class, 'approve'])->name('loans.approve');
+Route::post('/loans/collect-money/{loan}', [LoansController::class, 'collectMoney'])->name('loans.collect-money');

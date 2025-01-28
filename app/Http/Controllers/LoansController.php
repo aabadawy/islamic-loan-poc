@@ -58,4 +58,13 @@ class LoansController extends Controller
 
         return response()->json(['loan' => $loan->fresh()]);
     }
+
+    public function collectMoney(Loan $loan, Request $request)
+    {
+        LoanAggregateRoot::retrieve($loan->id)
+            ->collectMoney(Str::uuid7(), $request->float('amount'), now())
+            ->persist();
+
+        return response()->json(['loan' => $loan->refresh()]);
+    }
 }

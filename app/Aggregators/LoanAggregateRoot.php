@@ -6,6 +6,7 @@ use App\Events\LoanApproved;
 use App\Events\LoanChangeAmountRequestRejected;
 use App\Events\LoanRequested;
 use App\Events\LoanRequestedAmountChanged;
+use App\Events\MoneyCollected;
 use App\LoanStatus;
 use Carbon\Carbon;
 use Spatie\EventSourcing\AggregateRoots\AggregateRoot;
@@ -16,7 +17,16 @@ class LoanAggregateRoot extends AggregateRoot
 
     protected float $dailyAmount = 0;
 
+    protected float $remainingAmount = 0;
+
     protected LoanStatus $status;
+
+    protected LoanCollectedTransactions $collectedTransactions;
+
+    public function __construct()
+    {
+        $this->collectedTransactions = new LoanCollectedTransactions($this);
+    }
 
     public function requestLoan(int $userId, float $requestedAmount, float $dailyAmount, Carbon $date)
     {
@@ -52,9 +62,22 @@ class LoanAggregateRoot extends AggregateRoot
         return $this;
     }
 
+    public function collectMoney(string $transactionId, float $amount, Carbon $collectedAt): self
+    {
+        if ($this->loanAlreadyPaid()) {
+            return $this;
+        }
+
+        $this->collectedTransactions->collectMoney($transactionId, $amount, $collectedAt);
+
+        return $this;
+    }
+
     public function applyLoanRequested(LoanRequested $event)
     {
         $this->requestedAmount = $event->requestedAmount;
+
+        $this->remainingAmount = $event->requestedAmount;
 
         $this->dailyAmount = $event->dailyAmount;
 
@@ -64,6 +87,8 @@ class LoanAggregateRoot extends AggregateRoot
     public function applyLoanRequestedAmountChanged(LoanRequested $event)
     {
         $this->requestedAmount = $event->requestedAmount;
+
+        $this->remainingAmount = $event->requestedAmount;
 
         $this->dailyAmount = $event->dailyAmount;
 
@@ -75,8 +100,18 @@ class LoanAggregateRoot extends AggregateRoot
         $this->status = LoanStatus::Approved;
     }
 
+    public function applyMoneyCollected(MoneyCollected $event)
+    {
+        $this->remainingAmount -= $event->amount;
+    }
+
     private function loanProcessStarted(): bool
     {
         return $this->status != LoanStatus::Requested;
+    }
+
+    private function loanAlreadyPaid(): bool
+    {
+        return $this->status == LoanStatus::Paid;
     }
 }

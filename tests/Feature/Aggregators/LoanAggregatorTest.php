@@ -7,6 +7,7 @@ use App\Events\LoanApproved;
 use App\Events\LoanChangeAmountRequestRejected;
 use App\Events\LoanRequested;
 use App\Events\LoanRequestedAmountChanged;
+use App\Events\MoneyCollected;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -70,5 +71,25 @@ class LoanAggregatorTest extends TestCase
             ->when(function (LoanAggregateRoot $aggregateRoot) {
                 $aggregateRoot->approveLoan(now());
             })->assertEventRecorded(new LoanApproved($uuid, now()));
+    }
+
+    #[Test]
+    public function itCanCollectMoney()
+    {
+        $user_id = User::factory()->createOne()->id;
+
+        $this->freezeTime();
+
+        $loanTransactionId = Str::uuid7();
+
+        LoanAggregateRoot::fake($uuid = Str::uuid7())
+            ->when(function (LoanAggregateRoot $aggregateRoot) use ($user_id) {
+                $aggregateRoot->requestLoan($user_id, 300, 100, now());
+            })
+            ->assertEventRecorded(new LoanRequested($uuid, $user_id, 300, 100, now()))
+            ->when(function (LoanAggregateRoot $aggregateRoot) use ($loanTransactionId) {
+                $aggregateRoot->collectMoney($loanTransactionId, 100, now()->addHours(5));
+            })
+            ->assertEventRecorded(new MoneyCollected($uuid, $loanTransactionId, 100, now()->addHours(5)));
     }
 }

@@ -64,4 +64,36 @@ class LoansControllerTest extends TestCase
                 ],
             ]);
     }
+
+    #[Test]
+    public function itCanCollectLoanTransactions()
+    {
+        $authUser = User::factory()->createOne();
+
+        LoanAggregateRoot::retrieve($loanId = Str::uuid7())
+            ->requestLoan($authUser->id, 30, 10, now())
+            ->persist();
+
+        $this->actingAs($authUser, 'sanctum')->post(route('loans.collect-money', $loanId), ['amount' => 10])
+            ->assertSuccessful()
+            ->assertJson([
+                'loan' => [
+                    'remaining_amount' => 20,
+                    'status' => LoanStatus::Partial_Paid->value,
+                ],
+            ]);
+
+        $this->assertDatabaseCount('loan_transactions', 1);
+
+        $this->actingAs($authUser, 'sanctum')->post(route('loans.collect-money', $loanId), ['amount' => 10])
+            ->assertSuccessful()
+            ->assertJson([
+                'loan' => [
+                    'remaining_amount' => 10,
+                    'status' => LoanStatus::Partial_Paid->value,
+                ],
+            ]);
+
+        $this->assertDatabaseCount('loan_transactions', 2);
+    }
 }
