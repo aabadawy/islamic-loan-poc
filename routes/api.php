@@ -10,3 +10,5 @@ Route::get('/user', function (Request $request) {
 
 Route::apiResource('/loans', LoansController::class)
     ->middleware('auth:sanctum');
+
+Route::post('/loans/approve/{loan}', [LoansController::class, 'approve'])->name('loans.approve');

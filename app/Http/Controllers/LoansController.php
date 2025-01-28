@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Aggregators\LoanAggregateRoot;
+use App\Http\Requests\UpdateLoadRequest;
 use App\Models\Loan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -40,16 +41,21 @@ class LoansController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Loan $loan)
+    public function update(UpdateLoadRequest $request, Loan $loan)
     {
-        //
+        LoanAggregateRoot::retrieve($loan->id)
+            ->requestToChangeLoanAmount($request->float('requested_amount'), $request->float('daily_amount'))
+            ->persist();
+
+        return response()->json(['loan' => $loan->fresh()]);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Loan $loan)
+    public function approve(Loan $loan)
     {
-        //
+        LoanAggregateRoot::retrieve($loan->id)
+            ->approveLoan(now())
+            ->persist();
+
+        return response()->json(['loan' => $loan->fresh()]);
     }
 }
