@@ -16,6 +16,7 @@ class LoanTransactionProjector extends Projector
                 'id' => $event->transactionId,
                 'loan_id' => $event->loanId,
                 'amount' => $event->amount,
+                'status' => $event->status,
                 'created_at' => $event->collectedAt,
                 'updated_at' => $event->collectedAt,
             ]);

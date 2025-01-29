@@ -15,7 +15,7 @@ class MoneyCollected extends ShouldBeStored
     /**
      * Create a new event instance.
      */
-    public function __construct(public string $loanId, public string $transactionId, public float $amount, public Carbon $collectedAt)
+    public function __construct(public string $loanId, public string $transactionId, public float $amount, public Carbon $collectedAt, public int $status)
     {
         //
     }

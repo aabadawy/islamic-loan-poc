@@ -55,7 +55,7 @@ class LoanProjector extends Projector
 
     public function onLoanPaid(LoanPaid $event): void
     {
-        Loan::find($event->loanId)
+        Loan::find($event->transactionId)
             ->writeable()
             ->update(['status' => LoanStatus::Paid]);
     }

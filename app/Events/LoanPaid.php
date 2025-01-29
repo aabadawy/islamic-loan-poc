@@ -14,7 +14,7 @@ class LoanPaid extends ShouldBeStored
     /**
      * Create a new event instance.
      */
-    public function __construct(public string $loanId, public float $lastPaidAmount, public $paidAt)
+    public function __construct(public string $transactionId, public float $lastPaidAmount, public $paidAt)
     {
         //
     }

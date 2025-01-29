@@ -3,6 +3,7 @@
 namespace Feature\Aggregators;
 
 use App\Aggregators\LoanAggregateRoot;
+use App\CollectedMoneyStatus;
 use App\Events\LoanApproved;
 use App\Events\LoanChangeAmountRequestRejected;
 use App\Events\LoanPaid;
@@ -91,7 +92,7 @@ class LoanAggregatorTest extends TestCase
             ->when(function (LoanAggregateRoot $aggregateRoot) use ($loanTransactionId) {
                 $aggregateRoot->collectMoney($loanTransactionId, 100, now()->addHours(5));
             })
-            ->assertEventRecorded(new MoneyCollected($uuid, $loanTransactionId, 100, now()->addHours(5)));
+            ->assertEventRecorded(new MoneyCollected($uuid, $loanTransactionId, 100, now()->addHours(5), CollectedMoneyStatus::FullyCollected->value));
     }
 
     #[Test]
@@ -115,5 +116,43 @@ class LoanAggregatorTest extends TestCase
                 $aggregateRoot->collectMoney($lastTransactionId, 100, now()->addDays(1));
             })
             ->assertEventRecorded(new LoanPaid($lastTransactionId, 100, now()->addDays(1)));
+    }
+
+    #[Test]
+    public function itShouldSetCollectedMoneyStatusBasedOnCollectedAmount()
+    {
+        $user_id = User::factory()->createOne()->id;
+        $fullyCollectedId = Str::uuid7();
+        $partialCollectedId = Str::uuid7();
+        $overCollectedId = Str::uuid7();
+        $noMoneyCollectedId = Str::uuid7();
+        $lastFullCollectedId = Str::uuid7();
+
+        $this->freezeTime();
+
+        LoanAggregateRoot::fake($loanId = Str::uuid7())
+            ->when(function (LoanAggregateRoot $aggregateRoot) use ($user_id, $fullyCollectedId) {
+                $aggregateRoot
+                    ->requestLoan($user_id, 400, 100, now()->subDays(5))
+                    ->collectMoney($fullyCollectedId, 100, now()->subDays(4));
+            })
+            ->assertEventRecorded(new MoneyCollected($loanId, $fullyCollectedId, 100, now()->subDays(4), CollectedMoneyStatus::FullyCollected->value))
+            ->when(function (LoanAggregateRoot $aggregateRoot) use ($partialCollectedId) {
+                $aggregateRoot->collectMoney($partialCollectedId, 90, now()->subDays(3));
+            })
+            ->assertEventRecorded(new MoneyCollected($loanId, $partialCollectedId, 90, now()->subDays(3), CollectedMoneyStatus::PartiallyCollected->value))
+            ->when(function (LoanAggregateRoot $aggregateRoot) use ($overCollectedId) {
+                $aggregateRoot->collectMoney($overCollectedId, 110, now()->subDays(2));
+            })
+            ->assertEventRecorded(new MoneyCollected($loanId, $overCollectedId, 110, now()->subDays(2), CollectedMoneyStatus::OverCollected->value))
+            ->when(function (LoanAggregateRoot $aggregateRoot) use ($noMoneyCollectedId) {
+                $aggregateRoot->collectMoney($noMoneyCollectedId, 0, now()->subDays(1));
+            })
+            ->assertEventRecorded(new MoneyCollected($loanId, $noMoneyCollectedId, 0, now()->subDays(1), CollectedMoneyStatus::NotCollected->value))
+            ->when(function (LoanAggregateRoot $aggregateRoot) use ($lastFullCollectedId) {
+                $aggregateRoot->collectMoney($lastFullCollectedId, 100, now());
+            })
+            ->assertEventRecorded(new MoneyCollected($loanId, $lastFullCollectedId, 100, now(), CollectedMoneyStatus::FullyCollected->value))
+            ->assertEventRecorded(new LoanPaid($lastFullCollectedId, 100, now()));
     }
 }

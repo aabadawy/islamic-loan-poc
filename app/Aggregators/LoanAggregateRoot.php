@@ -16,7 +16,7 @@ class LoanAggregateRoot extends AggregateRoot
 {
     protected float $requestedAmount = 0;
 
-    protected float $dailyAmount = 0;
+    public float $dailyAmount = 0;
 
     protected float $remainingAmount = 0;
 
